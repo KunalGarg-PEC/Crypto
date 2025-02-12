@@ -1,142 +1,67 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn, calculateTradePercentages } from "@/lib/utils";
-import { getLeaderboardData } from "@/data/leaderboard-data";
-import { Switch } from "@/components/ui/switch";
-import { toggleLeaderboardListing } from "@/app/actions";
-import {
-  addUserToDatabase,
-  updateUserSocials,
-  getUserData,
-} from "@/app/actions";
-import {
-  Twitter,
-  MessageCircle,
-  Wallet,
-  ChevronDown,
-  TrendingUp,
-} from "lucide-react";
+import { ChevronDown, TrendingUp, Wallet, MessageCircle, Twitter } from "lucide-react";
+import { SocialMediaModal } from "@/components/social-media-modal";
+import { SiteHeader } from "@/components/site-header";
 import { SocialLinks } from "@/components/social-links";
 import { Badge } from "@/components/badge";
-import { SiteHeader } from "@/components/site-header";
-import { Button } from "@/components/ui/button";
-import { SocialMediaModal } from "@/components/social-media-modal";
-interface topTraders {
-  rank: number,
-  name: string,
-  pnl: string,
-  value: string;
-  position?: "left" | "center" | "right";
-  walletAddress: string;
-  greenTrades: number;
-  redTrades: number;
-  socials?: string[];
-}[] 
+import { toggleLeaderboardListing, updateUserSocials, addUserToDatabase } from "@/app/actions";
+
+// Import custom hooks
+import { useWallet } from "@/hooks/useWallet";
+import { useUserData } from "@/hooks/useUserData";
+import { useLeaderboard } from "@/hooks/useLeaderboard";
 
 export default function Leaderboard() {
-  // Replace the static data import with
-  const [topTraders, setTopTraders ] =  useState<topTraders[]>();
-  const [rankedTraders, setRankedTraders ] =  useState<topTraders[]>();
-  
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  // Use custom hooks to manage state.
+  const { walletAddress, isWalletConnected, connectWallet } = useWallet();
+  const { userData, fetchUserData, setUserData } = useUserData(walletAddress);
+  const { topTraders, rankedTraders, fetchLeaderboard } = useLeaderboard();
+
   const [showSocialMediaModal, setShowSocialMediaModal] = useState(false);
-  const [phantomWalletInstalled, setPhantomWalletInstalled] = useState(false);
-  const [userData, setUserData] = useState<any>(null);
   const [isListed, setIsListed] = useState(false);
 
+  // Update listing state when userData changes.
   useEffect(() => {
-    getLeaderboardData()
-      .then(({ topTraders, rankedTraders }) => {
-        setTopTraders(topTraders);
-        setRankedTraders(rankedTraders);
-      })
-      .catch((error) => console.error("Failed to fetch leaderboard data", error));
-  }, []);
-
-// Add this useEffect to sync with user data
-useEffect(() => {
-  if (userData) {
-    setIsListed(userData.listed);
-  }
-}, [userData]);
-
-// Add this handler
-const handleToggleListing = async () => {
-  if (!walletAddress) return;
-  
-  const newState = !isListed;
-  setIsListed(newState);
-  
-  const result = await toggleLeaderboardListing(walletAddress, newState);
-  if (!result.success) {
-    setIsListed(!newState); // Revert on error
-    alert("Failed to update listing status");
-  }
-};
-
-  useEffect(() => {
-    const checkPhantomWallet = async () => {
-      if (
-        typeof window !== "undefined" &&
-        (window as any).solana  &&
-        (window as any).solana.isPhantom
-      ) {
-        setPhantomWalletInstalled(true);
-        try {
-          const provider = (window as any).solana;
-          const response = await provider.connect({ onlyIfTrusted: true });
-          const publicKey = response.publicKey.toString();
-          setWalletAddress(publicKey);
-          setIsWalletConnected(true);
-          await fetchUserData(publicKey);
-        } catch (error) {
-          // User has not previously connected, do nothing
-          console.log("User has not previously connected Phantom wallet");
-        }
-      }
-    };
-
-    checkPhantomWallet();
-  }, []); //Corrected useEffect dependency
-
-  const fetchUserData = useCallback(async (address: string) => {
-    const result = await getUserData(address);
-    if (result.success) {
-      setUserData(result.user);
-    } else {
-      console.error("Failed to fetch user data:", result.error);
+    if (userData) {
+      setIsListed(userData.listed);
     }
-  }, []);
+  }, [userData]);
+
+  const handleToggleListing = async (newState: boolean) => {
+    if (!walletAddress) return;
+    const result = await toggleLeaderboardListing(walletAddress, newState);
+    if (result.success) {
+      setIsListed(newState);
+      await fetchLeaderboard();
+    } else {
+      alert("Failed to update listing status");
+      // Revert the toggle if the update fails.
+      setIsListed((prev) => !prev);
+    }
+  };
+
+  // Poll for user data and leaderboard updates every 10 seconds.
+  useEffect(() => {
+    if (!walletAddress) return;
+    const interval = setInterval(() => {
+      fetchUserData(walletAddress);
+      fetchLeaderboard();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [walletAddress, fetchUserData, fetchLeaderboard]);
 
   const handleConnectWallet = useCallback(async () => {
-    if (typeof window === "undefined") {
-      console.error("Window object is not available");
-      return;
+    await connectWallet();
+    if (walletAddress) {
+      await addUserToDatabase(walletAddress);
+      fetchUserData(walletAddress);
     }
-
-    if (!(window as any).solana || !(window as any).solana.isPhantom) {
-      window.open("https://phantom.app/", "_blank");
-      return;
-    }
-
-    try {
-      const provider = (window as any).solana;
-      const response = await provider.connect();
-      const publicKey = response.publicKey.toString();
-      setWalletAddress(publicKey);
-      setIsWalletConnected(true);
-
-      // Add user to database and fetch user data
-      await addUserToDatabase(publicKey);
-      await fetchUserData(publicKey);
-    } catch (error) {
-      console.error("Error connecting to Phantom wallet:", error);
-    }
-  }, [fetchUserData]);
+  }, [connectWallet, walletAddress, fetchUserData]);
 
   const handleOpenSocialMediaModal = useCallback(() => {
     if (walletAddress) {
@@ -158,17 +83,14 @@ const handleToggleListing = async () => {
         twitch: socials.twitch || "",
         kick: socials.kick || "",
       });
-
       if (result.success) {
         setShowSocialMediaModal(false);
         setUserData(result.user);
-        console.log("Successfully updated social information:", result.user);
+        await fetchLeaderboard();
       } else {
-        console.error("Failed to update social information:", result.error);
         alert(`Failed to update social information: ${result.error}`);
       }
     } catch (error) {
-      console.error("Error updating social information:", error);
       alert(
         `Error updating social information: ${
           error instanceof Error ? error.message : String(error)
@@ -181,14 +103,13 @@ const handleToggleListing = async () => {
     <div className="min-h-screen bg-[#0A0B0F] text-white">
       <SiteHeader />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Header and Action Buttons */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12">
           <div>
             <h1 className="text-4xl font-extrabold mb-2 bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text">
               PnL Leaderboard
             </h1>
-            <p className="text-gray-400 text-lg">
-              Top traders crushing the market
-            </p>
+            <p className="text-gray-400 text-lg">Top traders crushing the market</p>
           </div>
           <div className="flex space-x-4">
             <Button
@@ -209,22 +130,22 @@ const handleToggleListing = async () => {
                 <Wallet className="mr-2 h-5 w-5" />
                 {isWalletConnected && (
                   <div className="flex items-center space-x-2 ml-4">
-                    <Switch
+                    <input
+                      type="checkbox"
                       checked={isListed}
-                      onCheckedChange={handleToggleListing}
-                      className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-600"
+                      onChange={(e) => handleToggleListing(e.target.checked)}
+                      className="form-checkbox h-5 w-5 text-green-500"
                     />
-                    <span className="text-sm">
-                      {isListed ? "Listed" : "Unlisted"}
-                    </span>
+                    <span className="text-sm">{isListed ? "Listed" : "Unlisted"}</span>
                   </div>
                 )}
-                </span>
+              </span>
               <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </Button>
           </div>
         </div>
 
+        {/* Tabs for Period Selection */}
         <Tabs defaultValue="daily" className="mb-12">
           <TabsList className="bg-[#1E2028]/50 p-1 rounded-lg inline-flex">
             {["Daily", "Weekly", "Monthly"].map((period) => (
@@ -239,20 +160,17 @@ const handleToggleListing = async () => {
           </TabsList>
         </Tabs>
 
-        {/* Top Cards */}
+        {/* Top Cards Section */}
         <div className="mb-16 perspective-1000">
           <div className="flex flex-col md:flex-row justify-center items-center md:items-stretch gap-6">
-            {topTraders?.map((trader, i) => (
+            {topTraders.map((trader, i) => (
               <Card
                 key={i}
-                className={cn(
-                  "border-[#2A2D3A]/50 relative overflow-hidden w-full md:w-[300px]",
-                  "transition-all duration-500 ease-out",
+                className={`border-[#2A2D3A]/50 relative overflow-hidden w-full md:w-[300px] transition-all duration-500 ease-out ${
                   trader.position === "center"
                     ? "z-20 md:w-[340px] transform scale-[1.03] -translate-y-1 translate-z-[30px] bg-[#0F1115] hover:scale-[1.05] hover:translate-z-[40px]"
-                    : "z-10 transform scale-95 translate-y-0 translate-z-[-10px] opacity-90 hover:opacity-100 hover:scale-100 hover:translate-z-0 bg-[#0D0E12]",
-                  "shadow-xl hover:shadow-2xl shadow-purple-500/10 hover:shadow-purple-500/20"
-                )}
+                    : "z-10 transform scale-95 translate-y-0 translate-z-[-10px] opacity-90 hover:opacity-100 hover:scale-100 hover:translate-z-0 bg-[#0D0E12]"
+                } shadow-xl hover:shadow-2xl shadow-purple-500/10 hover:shadow-purple-500/20`}
               >
                 {trader.position === "left" && <Badge type="silver" />}
                 {trader.position === "center" && <Badge type="gold" />}
@@ -266,12 +184,8 @@ const handleToggleListing = async () => {
                       </div>
                       <SocialLinks />
                     </div>
-                    <h3 className="text-xl font-bold mb-1 text-white">
-                      {trader.name}
-                    </h3>
-                    <p className="text-gray-400 text-sm mb-4">
-                      {trader.walletAddress}
-                    </p>
+                    <h3 className="text-xl font-bold mb-1 text-white">{trader.name}</h3>
+                    <p className="text-gray-400 text-sm mb-4">{trader.walletAddress}</p>
                     <div className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600 mb-1 flex items-center">
                       <TrendingUp className="mr-2 h-6 w-6 text-emerald-500" />
                       {trader.pnl} ≋
@@ -295,13 +209,11 @@ const handleToggleListing = async () => {
                       </span>
                     </div>
                   </div>
-                  <div className="w-full h-2 bg-[#2A2D3A]/50 rounded-full overflow-hidden relative z-10">
+                  <div className="w-full h-2 bg-[#2A2D3A]/50 rounded-full overflow-hidden relative">
                     {(() => {
-                      const { greenPercentage, redPercentage } =
-                        calculateTradePercentages(
-                          trader.greenTrades,
-                          trader.redTrades
-                        );
+                      const totalTrades = trader.greenTrades + trader.redTrades || 1;
+                      const greenPercentage = (trader.greenTrades / totalTrades) * 100;
+                      const redPercentage = (trader.redTrades / totalTrades) * 100;
                       return (
                         <>
                           <div
@@ -327,9 +239,9 @@ const handleToggleListing = async () => {
           </div>
         </div>
 
-        {/* List View */}
+        {/* List View Section */}
         <div className="space-y-4">
-          {rankedTraders?.map((trader, i) => (
+          {rankedTraders.map((trader, i) => (
             <div
               key={i}
               className="bg-gradient-to-r from-[#1E2028] to-[#14151A] border border-[#2A2D3A]/50 rounded-lg p-4 flex items-center transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10 hover:border-purple-500/50"
@@ -347,9 +259,7 @@ const handleToggleListing = async () => {
                 <div className="flex-1">
                   <h3 className="font-semibold text-white">{trader.name}</h3>
                   <div className="flex items-center justify-between">
-                    <p className="text-gray-400 text-sm">
-                      {trader.walletAddress}
-                    </p>
+                    <p className="text-gray-400 text-sm">{trader.walletAddress}</p>
                     <div className="flex gap-2">
                       <div className="w-6 h-6 bg-[#2A2D3A]/50 rounded-full flex items-center justify-center transition-colors hover:bg-[#2A2D3A]">
                         <Twitter className="w-3 h-3 text-gray-300" />
@@ -365,11 +275,9 @@ const handleToggleListing = async () => {
               <div className="flex flex-col items-center gap-2 w-[25%]">
                 <div className="w-full h-2 bg-[#2A2D3A]/50 rounded-full overflow-hidden relative">
                   {(() => {
-                    const { greenPercentage, redPercentage } =
-                      calculateTradePercentages(
-                        trader.greenTrades,
-                        trader.redTrades
-                      );
+                    const totalTrades = trader.greenTrades + trader.redTrades || 1;
+                    const greenPercentage = (trader.greenTrades / totalTrades) * 100;
+                    const redPercentage = (trader.redTrades / totalTrades) * 100;
                     return (
                       <>
                         <div

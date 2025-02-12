@@ -70,17 +70,34 @@ export async function updateUserSocials(
 
 export async function toggleLeaderboardListing(walletAddress: string, listed: boolean) {
   try {
-    const result = await toggleUserListing(walletAddress, listed);
-    return { success: true, user: result };
+    await db.update(users)
+      .set({ listed })
+      .where(eq(users.walletAddress, walletAddress));
+    
+    console.log("users dataa ",users); 
+    return { success: true };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Failed to toggle listing' };
+    console.error("Error toggling listing:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to toggle listing' 
+    };
   }
 }
+
 export async function fetchListedUsers() {
   try {
-    const users = await getListedUsers();
-    return { success: true, users };
+    const listedUsers = await db.select()
+      .from(users)
+      .where(eq(users.listed, true))
+      .execute();
+
+    return { success: true, users: listedUsers };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch leaderboard' };
+    console.error("Error fetching listed users:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to fetch leaderboard' 
+    };
   }
 }
