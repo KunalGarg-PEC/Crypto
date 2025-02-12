@@ -26,11 +26,11 @@ export async function getLeaderboardData() {
   const traders = result.users
     .map(user => ({
       name: user.nickname || `Trader ${user.walletAddress.slice(0, 4)}`,
-      pnl: Math.random() * 100000, // Numeric value
-      value: Math.random() * 500000, // Numeric value
+      pnl: (Math.random() * 10000).toFixed(4), // Numeric value
+      value: (Math.random() * 50000).toFixed(4), // Numeric value
       walletAddress: user.walletAddress,
-      greenTrades: Math.floor(Math.random() * 300) || 0,
-      redTrades: Math.floor(Math.random() * 100) || 0,
+      greenTrades: Math.floor(Math.random() * 300).toFixed(4) || 0,
+      redTrades: Math.floor(Math.random() * 100).toFixed(4) || 0,
       socials: []
     }))
     .sort((a, b) => b.pnl - a.pnl) // Sort descending by PnL

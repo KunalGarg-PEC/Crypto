@@ -4,12 +4,14 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronDown, TrendingUp, Wallet, MessageCircle, Twitter } from "lucide-react";
+import { ChevronDown, TrendingUp, Wallet, MessageCircle, Twitter, Loader2 } from "lucide-react";
 import { SocialMediaModal } from "@/components/social-media-modal";
 import { SiteHeader } from "@/components/site-header";
 import { SocialLinks } from "@/components/social-links";
 import { Badge } from "@/components/badge";
 import { toggleLeaderboardListing, updateUserSocials, addUserToDatabase } from "@/app/actions";
+import { cn, calculateTradePercentages } from "@/lib/utils";
+import TabNavigation from "./tab-navigation";
 
 // Import custom hooks
 import { useWallet } from "@/hooks/useWallet";
@@ -19,7 +21,7 @@ import { useLeaderboard } from "@/hooks/useLeaderboard";
 export default function Leaderboard() {
   // Use custom hooks to manage state.
   const { walletAddress, isWalletConnected, connectWallet } = useWallet();
-  const { userData, fetchUserData, setUserData } = useUserData(walletAddress);
+  const { userData, fetchUserData, setUserData, loading: userLoading } = useUserData(walletAddress);
   const { topTraders, rankedTraders, fetchLeaderboard } = useLeaderboard();
 
   const [showSocialMediaModal, setShowSocialMediaModal] = useState(false);
@@ -114,7 +116,8 @@ export default function Leaderboard() {
           <div className="flex space-x-4">
             <Button
               onClick={handleOpenSocialMediaModal}
-              className="mt-4 md:mt-0 bg-gradient-to-r from-green-600 to-teal-500 hover:from-green-700 hover:to-teal-600 text-white rounded-lg px-6 py-3 font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 border border-green-400/30 relative overflow-hidden group"
+              variant="ghost"
+              className="text-gray-300 hover:text-white hover:bg-white/10 transition-all duration-300 rounded-lg px-4 py-2"
             >
               <span className="relative z-10 flex items-center">
                 <MessageCircle className="mr-2 h-5 w-5" />
@@ -124,19 +127,26 @@ export default function Leaderboard() {
             </Button>
             <Button
               onClick={handleConnectWallet}
-              className="mt-4 md:mt-0 bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white rounded-lg px-6 py-3 font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 border border-purple-400/30 relative overflow-hidden group"
+              variant="ghost"
+              className="text-gray-300 hover:text-white hover:bg-white/10 transition-all duration-300 rounded-lg px-4 py-2"
             >
               <span className="relative z-10 flex items-center">
                 <Wallet className="mr-2 h-5 w-5" />
                 {isWalletConnected && (
                   <div className="flex items-center space-x-2 ml-4">
-                    <input
-                      type="checkbox"
-                      checked={isListed}
-                      onChange={(e) => handleToggleListing(e.target.checked)}
-                      className="form-checkbox h-5 w-5 text-green-500"
-                    />
-                    <span className="text-sm">{isListed ? "Listed" : "Unlisted"}</span>
+                    {userLoading ? (
+                      <Loader2 className="animate-spin h-5 w-5" />
+                    ) : (
+                      <>
+                        <input
+                          type="checkbox"
+                          checked={isListed}
+                          onChange={(e) => handleToggleListing(e.target.checked)}
+                          className="form-checkbox h-5 w-5 text-green-500"
+                        />
+                        <span className="text-sm">{isListed ? "Listed" : "Unlisted"}</span>
+                      </>
+                    )}
                   </div>
                 )}
               </span>
@@ -146,171 +156,215 @@ export default function Leaderboard() {
         </div>
 
         {/* Tabs for Period Selection */}
-        <Tabs defaultValue="daily" className="mb-12">
-          <TabsList className="bg-[#1E2028]/50 p-1 rounded-lg inline-flex">
-            {["Daily", "Weekly", "Monthly"].map((period) => (
-              <TabsTrigger
-                key={period}
-                value={period.toLowerCase()}
-                className="px-6 py-2 rounded-md text-sm font-medium transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-500 data-[state=active]:text-white"
-              >
-                {period}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <section>
+          <TabNavigation />
+        </section>
 
         {/* Top Cards Section */}
-        <div className="mb-16 perspective-1000">
-          <div className="flex flex-col md:flex-row justify-center items-center md:items-stretch gap-6">
-            {topTraders.map((trader, i) => (
-              <Card
-                key={i}
-                className={`border-[#2A2D3A]/50 relative overflow-hidden w-full md:w-[300px] transition-all duration-500 ease-out ${
-                  trader.position === "center"
-                    ? "z-20 md:w-[340px] transform scale-[1.03] -translate-y-1 translate-z-[30px] bg-[#0F1115] hover:scale-[1.05] hover:translate-z-[40px]"
-                    : "z-10 transform scale-95 translate-y-0 translate-z-[-10px] opacity-90 hover:opacity-100 hover:scale-100 hover:translate-z-0 bg-[#0D0E12]"
-                } shadow-xl hover:shadow-2xl shadow-purple-500/10 hover:shadow-purple-500/20`}
-              >
-                {trader.position === "left" && <Badge type="silver" />}
-                {trader.position === "center" && <Badge type="gold" />}
-                {trader.position === "right" && <Badge type="bronze" />}
-                <div className="p-6 pt-8 relative">
-                  <div className="flex flex-col items-center text-center mb-6 relative z-10">
-                    <div className="relative mb-4">
-                      <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-2xl font-bold relative overflow-hidden">
-                        {trader.name[0]}
-                        <div className="absolute inset-0 bg-purple-500 opacity-30 animate-pulse"></div>
+        <div className="max-w-6xl mx-auto mt-8 mb-8 perspective-1000">
+          {/* Use justify-center and negative horizontal margin to bring cards closer */}
+          <div className="flex justify-center items-start -mx-2">
+            {[...topTraders]
+              .sort((a, b) => {
+                const order = { left: 1, center: 2, right: 3 };
+                return order[a.position] - order[b.position];
+              })
+              .map((trader, i) => (
+                <div key={i} className="mx-2">
+                  <Card
+                    className={cn(
+                      "border-gray-800 relative overflow-visible transition-all duration-500 ease-out",
+                      trader.position === "center"
+                        ? "center-card z-20 w-[340px] p-5 pb-12 pt-4 bg-[#0F1115] hover:opacity-100"
+                        : "z-10 w-[300px] transform scale-95 translate-y-0 opacity-90 hover:opacity-100 hover:scale-100 p-6 pt-7 bg-[#0F1115]"
+                    )}
+                  >
+                    {trader.position === "left" && <Badge type="silver" />}
+                    {trader.position === "center" && <Badge type="gold" />}
+                    {trader.position === "right" && <Badge type="bronze" />}
+                    <div
+                      className={cn(
+                        "relative z-10 transition-transform duration-500 flex flex-col items-center text-center",
+                        trader.position === "center"
+                          ? "transform translateZ(20px) py-1"
+                          : "transform translateZ(0px)"
+                      )}
+                    >
+                      <div className="flex flex-col items-center mb-8 mt-4">
+                        <div className="relative">
+                          <div className="w-14 h-14 bg-gray-700 rounded-full" />
+                          <SocialLinks />
+                        </div>
                       </div>
-                      <SocialLinks />
+                      <h3 className="text-lg font-medium mb-1 text-white">
+                        {trader.name}
+                      </h3>
+                      <p className="text-gray-500 text-sm mb-4">
+                        {trader.walletAddress.slice(0, 20)}
+                      </p>
+                      <div className="text-2xl font-bold text-emerald-400 mb-1">
+                        {trader.pnl} ≋
+                      </div>
+                      <p className="text-gray-400 mb-6">{trader.value}</p>
+                      <div className="w-full h-px bg-gray-800 mb-4 relative">
+                        <div
+                          className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-emerald-500/20 to-transparent"
+                          style={{
+                            width:
+                              trader.position === "center"
+                                ? "calc(100% + 2.6rem)"
+                                : "calc(100% + 3.1rem)",
+                            left: trader.position === "center" ? "-1.3rem" : "-1.5rem",
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-center gap-4">
+                        <div className="flex items-center gap-1">
+                          <span className="w-2 h-2 bg-emerald-400 rounded-full" />
+                          <span className="text-sm text-gray-400">
+                            {trader.greenTrades}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="w-2 h-2 bg-red-400 rounded-full" />
+                          <span className="text-sm text-gray-400">
+                            {trader.redTrades}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full mt-4">
+                        <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden relative">
+                          {(() => {
+                            const { greenPercentage, redPercentage } =
+                              calculateTradePercentages(
+                                trader.greenTrades,
+                                trader.redTrades
+                              );
+                            return (
+                              <>
+                                <div
+                                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-400 to-transparent"
+                                  style={{
+                                    width: `${greenPercentage}%`,
+                                    clipPath: `polygon(0 0, 100% 50%, 0 100%, 0 0)`,
+                                  }}
+                                />
+                                <div
+                                  className="absolute top-0 right-0 h-full bg-gradient-to-l from-red-400 to-transparent"
+                                  style={{
+                                    width: `${redPercentage}%`,
+                                    clipPath: `polygon(100% 0, 0 50%, 100% 100%, 100% 0)`,
+                                  }}
+                                />
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
                     </div>
-                    <h3 className="text-xl font-bold mb-1 text-white">{trader.name}</h3>
-                    <p className="text-gray-400 text-sm mb-4">{trader.walletAddress}</p>
-                    <div className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600 mb-1 flex items-center">
-                      <TrendingUp className="mr-2 h-6 w-6 text-emerald-500" />
-                      {trader.pnl} ≋
-                    </div>
-                    <p className="text-gray-300">{trader.value}</p>
-                  </div>
-                  <div className="w-full h-px bg-[#2A2D3A]/50 mb-6 relative">
-                    <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-green-500/10 to-transparent"></div>
-                  </div>
-                  <div className="flex items-center justify-between mb-4 relative z-10">
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></span>
-                      <span className="text-sm text-gray-300">
-                        {trader.greenTrades} Wins
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 bg-red-400 rounded-full animate-pulse"></span>
-                      <span className="text-sm text-gray-300">
-                        {trader.redTrades} Losses
-                      </span>
-                    </div>
-                  </div>
-                  <div className="w-full h-2 bg-[#2A2D3A]/50 rounded-full overflow-hidden relative">
-                    {(() => {
-                      const totalTrades = trader.greenTrades + trader.redTrades || 1;
-                      const greenPercentage = (trader.greenTrades / totalTrades) * 100;
-                      const redPercentage = (trader.redTrades / totalTrades) * 100;
-                      return (
-                        <>
-                          <div
-                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-green-400 to-green-600"
-                            style={{ width: `${greenPercentage}%` }}
-                          />
-                          <div
-                            className="absolute top-0 right-0 h-full bg-gradient-to-l from-red-400 to-red-600"
-                            style={{ width: `${redPercentage}%` }}
-                          />
-                        </>
-                      );
-                    })()}
-                  </div>
+                    {trader.position === "center" && (
+                      <>
+                        <div className="absolute inset-0 rounded-lg overflow-hidden">
+                          <div className="absolute inset-x-0 right-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/10 to-transparent" />
+                          <div className="absolute inset-x-0 right-0 bottom-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+                        </div>
+                        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-purple-500/10 via-purple-500/5 to-transparent" />
+                      </>
+                    )}
+                  </Card>
                 </div>
-                {trader.position === "center" && (
-                  <div className="absolute inset-0 rounded-lg overflow-hidden">
-                    <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_50%_-20%,#7928CA,#FF0080)]"></div>
-                  </div>
-                )}
-              </Card>
-            ))}
+              ))}
           </div>
+          {/* Custom CSS for the center card 3D effect */}
+          <style jsx>{`
+            .center-card {
+              transform: scale(1.1) translateY(-0.25rem) translateZ(40px);
+            }
+            .center-card:hover {
+              transform: scale(1.15) translateY(-0.25rem) translateZ(50px);
+            }
+          `}</style>
         </div>
 
         {/* List View Section */}
-        <div className="space-y-4">
-          {rankedTraders.map((trader, i) => (
+        <div className="max-w-6xl mx-auto space-y-2">
+          {rankedTraders?.map((trader, i) => (
             <div
               key={i}
-              className="bg-gradient-to-r from-[#1E2028] to-[#14151A] border border-[#2A2D3A]/50 rounded-lg p-4 flex items-center transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10 hover:border-purple-500/50"
+              className="bg-[#0F1115] border border-gray-800 rounded-lg p-4 flex items-center"
             >
               <div className="flex items-center gap-4 w-[50%]">
                 <div className="relative">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-lg font-bold relative overflow-hidden">
-                    {trader.name[0]}
-                    <div className="absolute inset-0 bg-purple-500 opacity-30 animate-pulse"></div>
-                  </div>
-                  <div className="absolute -top-2 -left-2 w-6 h-6 bg-[#2A2D3A] rounded-full flex items-center justify-center text-xs font-bold text-white border border-purple-500">
-                    {trader.rank}
+                  <div className="w-12 h-12 bg-gray-700 rounded-full" />
+                  <div className="absolute -top-2 -left-2 w-7 h-7 bg-[#2A2D3A] rounded-full flex items-center justify-center text-xs font-bold text-gray-300 border-2 border-[#1A1D25]">
+                    #{trader.rank}
                   </div>
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-white">{trader.name}</h3>
-                  <div className="flex items-center justify-between">
-                    <p className="text-gray-400 text-sm">{trader.walletAddress}</p>
+                  <h3 className="font-medium text-white">{trader.name}</h3>
+                  <div className="flex items-center justify-left gap-4">
+                    <p className="text-gray-500 text-sm">
+                      {trader.walletAddress.slice(0,20)}
+                    </p>
                     <div className="flex gap-2">
-                      <div className="w-6 h-6 bg-[#2A2D3A]/50 rounded-full flex items-center justify-center transition-colors hover:bg-[#2A2D3A]">
-                        <Twitter className="w-3 h-3 text-gray-300" />
+                      <div className="w-6 h-6 bg-gray-800 rounded-full flex items-center justify-center">
+                        <Twitter className="w-3 h-3 text-gray-400" />
                       </div>
-                      <div className="w-6 h-6 bg-[#2A2D3A]/50 rounded-full flex items-center justify-center transition-colors hover:bg-[#2A2D3A]">
-                        <MessageCircle className="w-3 h-3 text-gray-300" />
+                      <div className="w-6 h-6 bg-gray-800 rounded-full flex items-center justify-center">
+                        <MessageCircle className="w-3 h-3 text-gray-400" />
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="w-px h-12 bg-[#2A2D3A]/50 mx-4" />
+              <div className="w-px h-12 bg-gray-800 mx-4" />
               <div className="flex flex-col items-center gap-2 w-[25%]">
-                <div className="w-full h-2 bg-[#2A2D3A]/50 rounded-full overflow-hidden relative">
+                <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden relative">
                   {(() => {
-                    const totalTrades = trader.greenTrades + trader.redTrades || 1;
-                    const greenPercentage = (trader.greenTrades / totalTrades) * 100;
-                    const redPercentage = (trader.redTrades / totalTrades) * 100;
+                    const { greenPercentage, redPercentage } =
+                      calculateTradePercentages(
+                        trader.greenTrades,
+                        trader.redTrades
+                      );
                     return (
                       <>
                         <div
-                          className="absolute top-0 left-0 h-full bg-gradient-to-r from-green-400 to-green-600"
-                          style={{ width: `${greenPercentage}%` }}
+                          className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-400 to-transparent"
+                          style={{
+                            width: `${greenPercentage}%`,
+                            clipPath: `polygon(0 0, 100% 50%, 0 100%, 0 0)`,
+                          }}
                         />
                         <div
-                          className="absolute top-0 right-0 h-full bg-gradient-to-l from-red-400 to-red-600"
-                          style={{ width: `${redPercentage}%` }}
+                          className="absolute top-0 right-0 h-full bg-gradient-to-l from-red-400 to-transparent"
+                          style={{
+                            width: `${redPercentage}%`,
+                            clipPath: `polygon(100% 0, 0 50%, 100% 100%, 100% 0)`,
+                          }}
                         />
                       </>
                     );
                   })()}
                 </div>
                 <div className="flex justify-between w-full text-xs text-gray-400">
-                  <span>{trader.greenTrades} Wins</span>
-                  <span>{trader.redTrades} Losses</span>
+                  <span>{trader.greenTrades}</span>
+                  <span>{trader.redTrades}</span>
                 </div>
               </div>
-              <div className="w-px h-12 bg-[#2A2D3A]/50 mx-4" />
+              <div className="w-px h-12 bg-gray-800 mx-4" />
               <div className="w-[25%] text-right">
-                <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600 flex items-center justify-end">
-                  <TrendingUp className="mr-2 h-5 w-5 text-emerald-500" />
-                  {trader.pnl} ≋
-                </div>
-                <div className="text-gray-300 text-sm">{trader.value}</div>
+                <div className="text-emerald-400 font-bold">{trader.pnl} ≋</div>
+                <div className="text-gray-400 text-sm">{trader.value}</div>
               </div>
             </div>
           ))}
         </div>
 
         <div className="mt-8 text-center">
-          <Button className="bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white rounded-lg px-6 py-3 font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 border border-purple-400/30 relative overflow-hidden group">
+          <Button
+            variant="ghost"
+            className="text-gray-300 hover:text-white hover:bg-white/10 transition-all duration-300 rounded-lg px-4 py-2"
+          >
             <span className="relative z-10 flex items-center">
               Load More <ChevronDown className="ml-2 h-5 w-5" />
             </span>

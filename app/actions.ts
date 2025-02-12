@@ -37,6 +37,7 @@ export async function getUserData(walletAddress: string) {
       twitter: users.twitter,
       twitch: users.twitch,
       kick: users.kick,
+      listed: users.listed,
       createdAt: users.createdAt
     })
     .from(users)
