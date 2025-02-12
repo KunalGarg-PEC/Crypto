@@ -51,6 +51,7 @@ export default function Leaderboard() {
   const [userData, setUserData] = useState<any>(null);
   const [isListed, setIsListed] = useState(false);
   const [isLoadingUserData, setIsLoadingUserData] = useState(true);
+  const [isUpdatingSocials, setIsUpdatingSocials] = useState(false);
 
   useEffect(() => {
     getLeaderboardData()
@@ -179,30 +180,19 @@ export default function Leaderboard() {
     walletAddress: string,
     socials: Record<string, string>
   ) => {
+    setIsUpdatingSocials(true);
     try {
-      const result = await updateUserSocials(nickname, walletAddress, {
-        telegram: socials.telegram || "",
-        discord: socials.discord || "",
-        twitter: socials.twitter || "",
-        twitch: socials.twitch || "",
-        kick: socials.kick || "",
-      });
-
+      const result = await updateUserSocials(nickname, walletAddress, socials);
       if (result.success) {
+        await fetchUserData(walletAddress); // Re-fetch to ensure latest data
         setShowSocialMediaModal(false);
-        setUserData(result.user);
-        console.log("Successfully updated social information:", result.user);
       } else {
-        console.error("Failed to update social information:", result.error);
-        alert(`Failed to update social information: ${result.error}`);
+        // Handle error
       }
     } catch (error) {
-      console.error("Error updating social information:", error);
-      alert(
-        `Error updating social information: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
+      // Handle error
+    } finally {
+      setIsUpdatingSocials(false);
     }
   };
 
@@ -222,6 +212,7 @@ export default function Leaderboard() {
           <div className="flex space-x-4">
             <Button
               onClick={handleOpenSocialMediaModal}
+              disabled={isToggling || isUpdatingSocials}
               variant="ghost"
               className="text-gray-300 hover:text-white hover:bg-white/10 transition-all duration-300 rounded-lg px-4 py-2"
             >
@@ -247,7 +238,9 @@ export default function Leaderboard() {
                           checked={isListed}
                           onCheckedChange={handleToggleListing}
                           className="data-[state=checked]:bg-green-900 data-[state=unchecked]:bg-gray-600"
-                          disabled={isToggling || isLoadingUserData}
+                          disabled={
+                            isToggling || isLoadingUserData || isUpdatingSocials
+                          }
                         />
                         <span className="text-sm flex items-center gap-2">
                           {isToggling ? (
