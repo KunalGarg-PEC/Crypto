@@ -28,21 +28,22 @@ export async function addUserToDatabase(walletAddress: string) {
 
 export async function getUserData(walletAddress: string) {
   try {
-    const user = await db
-      .select({
-        id: users.id,
-        walletAddress: users.walletAddress,
-        nickname: users.nickname,
-        telegram: users.telegram,
-        discord: users.discord,
-        twitter: users.twitter,
-        twitch: users.twitch,
-        kick: users.kick,
-        listed: users.listed, // Add this line
-        createdAt: users.createdAt,
-      })
-      .from(users)
-      .where(eq(users.walletAddress, walletAddress));
+
+    const user = await db.select({
+      id: users.id,
+      walletAddress: users.walletAddress,
+      nickname: users.nickname,
+      telegram: users.telegram,
+      discord: users.discord,
+      twitter: users.twitter,
+      twitch: users.twitch,
+      kick: users.kick,
+      listed: users.listed,
+      createdAt: users.createdAt
+    })
+    .from(users)
+    .where(eq(users.walletAddress, walletAddress));
+
 
     if (user.length === 0) return { success: false, error: "User not found" };
     return { success: true, user: user[0] };
@@ -80,25 +81,38 @@ export async function toggleLeaderboardListing(
   listed: boolean
 ) {
   try {
-    const result = await toggleUserListing(walletAddress, listed);
-    return { success: true, user: result };
+    await db.update(users)
+      .set({ listed })
+      .where(eq(users.walletAddress, walletAddress));
+    
+    console.log("users dataa ",users); 
+    return { success: true };
   } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to toggle listing",
+
+    console.error("Error toggling listing:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to toggle listing' 
+
     };
   }
 }
+
 export async function fetchListedUsers() {
   try {
-    const users = await getListedUsers();
-    return { success: true, users };
+    const listedUsers = await db.select()
+      .from(users)
+      .where(eq(users.listed, true))
+      .execute();
+
+    return { success: true, users: listedUsers };
   } catch (error) {
-    return {
-      success: false,
-      error:
-        error instanceof Error ? error.message : "Failed to fetch leaderboard",
+
+    console.error("Error fetching listed users:", error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to fetch leaderboard' 
+
     };
   }
 }

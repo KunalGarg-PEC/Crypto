@@ -17,18 +17,15 @@ export function SiteHeader() {
             <div className="flex items-center space-x-8">
               <div className="flex items-center">
                 <div className="relative w-10 h-10 mr-3">
-                  <Image
-                    src="/xxxxxx-removebg-preview.png"
-                    alt="MightX Logo"
-                    layout="fill"
-                    className="rounded-lg size-5"
-                  />
+
+                  <Image src="/mightxlogo.png" alt="MightX Logo" layout="fill" className="rounded-lg" />
+
                   <div className="absolute inset-0 bg-blue-500 opacity-50 rounded-lg blur-sm"></div>
                 </div>
                 <span className="text-white text-xl font-bold">MightX</span>
               </div>
               <nav className="hidden md:flex items-center space-x-1">
-                {["Trench", "Clan", "Leaderboard"].map((item) => (
+                {["Trench", "Clan", "Leaderboard","Tracker"].map((item) => (
                   <Button
                     key={item}
                     variant="ghost"
@@ -59,7 +56,9 @@ export function SiteHeader() {
               </div>
               <Button
                 variant="ghost"
-                className="text-gray-300 hover:text-white hover:bg-white/10 transition-all duration-300 rounded-lg px-4 py-2"
+
+            className="text-gray-300 hover:text-white hover:bg-white/10 transition-all duration-300 rounded-lg px-4 py-2"
+
               >
                 <span className="relative z-10 flex items-center">
                   <Zap className="mr-2 h-4 w-4" />

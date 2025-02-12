@@ -48,7 +48,7 @@ export function SocialMediaModal({
       setSocials(initialSocials)
       setManualWalletAddress("")
     }
-  }, [isOpen, initialNickname, initialSocials])
+  }, [isOpen])
 
   const platforms: SocialPlatform[] = [
     {
