@@ -235,7 +235,7 @@ export default function Leaderboard() {
               <TabsTrigger
                 key={period}
                 value={period.toLowerCase()}
-                className="px-6 py-2 rounded-md text-sm font-medium transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-blue-500 data-[state=active]:text-white"
+                className="text-gray-300 hover:text-white hover:bg-white/10 transition-all duration-300 rounded-lg px-4 py-2"
               >
                 {period}
               </TabsTrigger>
