@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search, Menu, Zap } from "lucide-react"
-import Image from "next/image"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, Menu, Zap } from "lucide-react";
+import Image from "next/image";
 
 export function SiteHeader() {
-  const [isSearchFocused, setIsSearchFocused] = useState(false)
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 bg-transparent">
@@ -17,7 +17,12 @@ export function SiteHeader() {
             <div className="flex items-center space-x-8">
               <div className="flex items-center">
                 <div className="relative w-10 h-10 mr-3">
-                  <Image src="/logo.png" alt="MightX Logo" layout="fill" className="rounded-lg" />
+                  <Image
+                    src="/xxxxxx-removebg-preview.png"
+                    alt="MightX Logo"
+                    layout="fill"
+                    className="rounded-lg size-5"
+                  />
                   <div className="absolute inset-0 bg-blue-500 opacity-50 rounded-lg blur-sm"></div>
                 </div>
                 <span className="text-white text-xl font-bold">MightX</span>
@@ -35,7 +40,11 @@ export function SiteHeader() {
               </nav>
             </div>
             <div className="flex items-center space-x-6">
-              <div className={`relative transition-all duration-300 ease-in-out ${isSearchFocused ? "w-64" : "w-48"}`}>
+              <div
+                className={`relative transition-all duration-300 ease-in-out ${
+                  isSearchFocused ? "w-64" : "w-48"
+                }`}
+              >
                 <Input
                   type="text"
                   placeholder="Search..."
@@ -43,18 +52,14 @@ export function SiteHeader() {
                   onFocus={() => setIsSearchFocused(true)}
                   onBlur={() => setIsSearchFocused(false)}
                 />
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <Search
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  size={18}
+                />
               </div>
               <Button
-                className="
-                  bg-gradient-to-r from-purple-600 to-blue-500
-                  hover:from-purple-700 hover:to-blue-600
-                  text-white font-medium py-2 px-4 rounded-lg
-                  transition-all duration-300 ease-in-out
-                  shadow-lg hover:shadow-xl
-                  border border-purple-400/30
-                  relative overflow-hidden group
-                "
+                variant="ghost"
+                className="text-gray-300 hover:text-white hover:bg-white/10 transition-all duration-300 rounded-lg px-4 py-2"
               >
                 <span className="relative z-10 flex items-center">
                   <Zap className="mr-2 h-4 w-4" />
@@ -70,6 +75,5 @@ export function SiteHeader() {
         </div>
       </div>
     </header>
-  )
+  );
 }
-
