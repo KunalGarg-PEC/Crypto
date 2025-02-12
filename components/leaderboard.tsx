@@ -1,9 +1,10 @@
 "use client";
-
+import TabNavigation from "./tabNavigation";
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { ChevronDown, TrendingUp, Wallet, MessageCircle, Twitter, Loader2 } from "lucide-react";
 import { SocialMediaModal } from "@/components/social-media-modal";
 import { SiteHeader } from "@/components/site-header";
@@ -24,11 +25,16 @@ export default function Leaderboard() {
   const { userData, fetchUserData, setUserData, loading: userLoading } = useUserData(walletAddress);
   const { topTraders, rankedTraders, fetchLeaderboard } = useLeaderboard();
 
+
+
   const [showSocialMediaModal, setShowSocialMediaModal] = useState(false);
   const [isListed, setIsListed] = useState(false);
+  const [isLoadingUserData, setIsLoadingUserData] = useState(true);
+  const [isUpdatingSocials, setIsUpdatingSocials] = useState(false);
 
   // Update listing state when userData changes.
   useEffect(() => {
+
     if (userData) {
       setIsListed(userData.listed);
     }
@@ -37,13 +43,18 @@ export default function Leaderboard() {
   const handleToggleListing = async (newState: boolean) => {
     if (!walletAddress) return;
     const result = await toggleLeaderboardListing(walletAddress, newState);
+
+    
     if (result.success) {
       setIsListed(newState);
       await fetchLeaderboard();
     } else {
+
       alert("Failed to update listing status");
       // Revert the toggle if the update fails.
       setIsListed((prev) => !prev);
+
+   
     }
   };
 
@@ -77,7 +88,9 @@ export default function Leaderboard() {
     walletAddress: string,
     socials: Record<string, string>
   ) => {
+    setIsUpdatingSocials(true);
     try {
+
       const result = await updateUserSocials(nickname, walletAddress, {
         telegram: socials.telegram || "",
         discord: socials.discord || "",
@@ -85,8 +98,11 @@ export default function Leaderboard() {
         twitch: socials.twitch || "",
         kick: socials.kick || "",
       });
+
       if (result.success) {
+        await fetchUserData(walletAddress); // Re-fetch to ensure latest data
         setShowSocialMediaModal(false);
+
         setUserData(result.user);
         await fetchLeaderboard();
       } else {
@@ -98,6 +114,7 @@ export default function Leaderboard() {
           error instanceof Error ? error.message : String(error)
         }`
       );
+
     }
   };
 
@@ -116,6 +133,7 @@ export default function Leaderboard() {
           <div className="flex space-x-4">
             <Button
               onClick={handleOpenSocialMediaModal}
+
               variant="ghost"
               className="text-gray-300 hover:text-white hover:bg-white/10 transition-all duration-300 rounded-lg px-4 py-2"
             >
@@ -123,7 +141,6 @@ export default function Leaderboard() {
                 <MessageCircle className="mr-2 h-5 w-5" />
                 Add Social
               </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-green-600/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </Button>
             <Button
               onClick={handleConnectWallet}
@@ -134,6 +151,7 @@ export default function Leaderboard() {
                 <Wallet className="mr-2 h-5 w-5" />
                 {isWalletConnected && (
                   <div className="flex items-center space-x-2 ml-4">
+
                     {userLoading ? (
                       <Loader2 className="animate-spin h-5 w-5" />
                     ) : (
@@ -145,6 +163,8 @@ export default function Leaderboard() {
                           className="form-checkbox h-5 w-5 text-green-500"
                         />
                         <span className="text-sm">{isListed ? "Listed" : "Unlisted"}</span>
+
+
                       </>
                     )}
                   </div>
@@ -155,10 +175,11 @@ export default function Leaderboard() {
           </div>
         </div>
 
-        {/* Tabs for Period Selection */}
+
         <section>
           <TabNavigation />
         </section>
+
 
         {/* Top Cards Section */}
         <div className="max-w-6xl mx-auto mt-8 mb-8 perspective-1000">
@@ -274,6 +295,8 @@ export default function Leaderboard() {
                   </Card>
                 </div>
               ))}
+
+        
           </div>
           {/* Custom CSS for the center card 3D effect */}
           <style jsx>{`
@@ -286,7 +309,6 @@ export default function Leaderboard() {
           `}</style>
         </div>
 
-        {/* List View Section */}
         <div className="max-w-6xl mx-auto space-y-2">
           {rankedTraders?.map((trader, i) => (
             <div
@@ -304,7 +326,11 @@ export default function Leaderboard() {
                   <h3 className="font-medium text-white">{trader.name}</h3>
                   <div className="flex items-center justify-left gap-4">
                     <p className="text-gray-500 text-sm">
+
                       {trader.walletAddress.slice(0,20)}
+
+                      
+
                     </p>
                     <div className="flex gap-2">
                       <div className="w-6 h-6 bg-gray-800 rounded-full flex items-center justify-center">
@@ -368,7 +394,6 @@ export default function Leaderboard() {
             <span className="relative z-10 flex items-center">
               Load More <ChevronDown className="ml-2 h-5 w-5" />
             </span>
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </Button>
         </div>
 
