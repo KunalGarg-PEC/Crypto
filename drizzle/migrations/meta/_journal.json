@@ -8,6 +8,13 @@
       "when": 1739313429916,
       "tag": "0000_safe_squirrel_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1739320213829,
+      "tag": "0001_jittery_demogoblin",
+      "breakpoints": true
     }
   ]
 }

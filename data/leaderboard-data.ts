@@ -1,3 +1,4 @@
+import { fetchListedUsers } from "@/app/actions"
 export interface Trader {
   name: string
   pnl: string
@@ -131,8 +132,30 @@ const leaderboardData: {
   ],
 }
 
-export function getLeaderboardData() {
-  return leaderboardData
+export async function getLeaderboardData() {
+  const result = await fetchListedUsers();
+  
+  if (!result.success) return { topTraders: [], rankedTraders: [] };
+
+  const generateTraderData = (user: any): RankedTrader => ({
+    rank: Math.floor(Math.random() * 100) + 1,
+    name: user.nickname || `Trader ${user.walletAddress.slice(0, 4)}`,
+    pnl: `$${(Math.random() * 100000).toFixed(2)}`,
+    value: `$${(Math.random() * 500000).toFixed(2)}`,
+    walletAddress: user.walletAddress,
+    greenTrades: Math.floor(Math.random() * 300),
+    redTrades: Math.floor(Math.random() * 100),
+    socials: []
+  });
+
+  const rankedTraders = result.users?.map(generateTraderData)
+    .sort((a, b) => parseFloat(b.pnl) - parseFloat(a.pnl))
+    .map((trader, index) => ({ ...trader, rank: index + 1 }));
+
+  return {
+    topTraders: rankedTraders?.slice(0, 3),
+    rankedTraders: rankedTraders?.slice(3)
+  };
 }
 
 export function addUserData(walletAddress: string, socials: string[]) {

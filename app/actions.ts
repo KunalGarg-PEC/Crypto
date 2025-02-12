@@ -4,6 +4,8 @@ import { addUser, getUserByWalletAddress, updateUser } from '@/lib/db'
 import { db } from "@/lib/db"; // Add db import
 import { users } from "@/lib/db"; // Add users import
 import { eq } from "drizzle-orm"; // Add eq import
+import { toggleUserListing } from '@/lib/db';
+import { getListedUsers } from '@/lib/db';
 
 export async function addUserToDatabase(walletAddress: string) {
   try {
@@ -63,5 +65,22 @@ export async function updateUserSocials(
     return { success: true, user }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Failed to update user' }
+  }
+}
+
+export async function toggleLeaderboardListing(walletAddress: string, listed: boolean) {
+  try {
+    const result = await toggleUserListing(walletAddress, listed);
+    return { success: true, user: result };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to toggle listing' };
+  }
+}
+export async function fetchListedUsers() {
+  try {
+    const users = await getListedUsers();
+    return { success: true, users };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch leaderboard' };
   }
 }

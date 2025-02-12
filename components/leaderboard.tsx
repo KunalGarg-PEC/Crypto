@@ -5,6 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn, calculateTradePercentages } from "@/lib/utils";
 import { getLeaderboardData } from "@/data/leaderboard-data";
+import { Switch } from "@/components/ui/switch";
+import { toggleLeaderboardListing } from "@/app/actions";
 import {
   addUserToDatabase,
   updateUserSocials,
@@ -22,14 +24,59 @@ import { Badge } from "@/components/badge";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { SocialMediaModal } from "@/components/social-media-modal";
+interface topTraders {
+  rank: number,
+  name: string,
+  pnl: string,
+  value: string;
+  position?: "left" | "center" | "right";
+  walletAddress: string;
+  greenTrades: number;
+  redTrades: number;
+  socials?: string[];
+}[] 
 
 export default function Leaderboard() {
-  const { topTraders, rankedTraders } = getLeaderboardData();
+  // Replace the static data import with
+  const [topTraders, setTopTraders ] =  useState<topTraders[]>();
+  const [rankedTraders, setRankedTraders ] =  useState<topTraders[]>();
+  
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [showSocialMediaModal, setShowSocialMediaModal] = useState(false);
   const [phantomWalletInstalled, setPhantomWalletInstalled] = useState(false);
   const [userData, setUserData] = useState<any>(null);
+  const [isListed, setIsListed] = useState(false);
+
+  useEffect(() => {
+    getLeaderboardData()
+      .then(({ topTraders, rankedTraders }) => {
+        setTopTraders(topTraders);
+        setRankedTraders(rankedTraders);
+      })
+      .catch((error) => console.error("Failed to fetch leaderboard data", error));
+  }, []);
+
+// Add this useEffect to sync with user data
+useEffect(() => {
+  if (userData) {
+    setIsListed(userData.listed);
+  }
+}, [userData]);
+
+// Add this handler
+const handleToggleListing = async () => {
+  if (!walletAddress) return;
+  
+  const newState = !isListed;
+  setIsListed(newState);
+  
+  const result = await toggleLeaderboardListing(walletAddress, newState);
+  if (!result.success) {
+    setIsListed(!newState); // Revert on error
+    alert("Failed to update listing status");
+  }
+};
 
   useEffect(() => {
     const checkPhantomWallet = async () => {
@@ -160,15 +207,19 @@ export default function Leaderboard() {
             >
               <span className="relative z-10 flex items-center">
                 <Wallet className="mr-2 h-5 w-5" />
-                {isWalletConnected
-                  ? `Connected: ${walletAddress?.slice(
-                      0,
-                      4
-                    )}...${walletAddress?.slice(-4)}`
-                  : phantomWalletInstalled
-                  ? "Connect Wallet"
-                  : "Install Phantom"}
-              </span>
+                {isWalletConnected && (
+                  <div className="flex items-center space-x-2 ml-4">
+                    <Switch
+                      checked={isListed}
+                      onCheckedChange={handleToggleListing}
+                      className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-600"
+                    />
+                    <span className="text-sm">
+                      {isListed ? "Listed" : "Unlisted"}
+                    </span>
+                  </div>
+                )}
+                </span>
               <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </Button>
           </div>
@@ -191,7 +242,7 @@ export default function Leaderboard() {
         {/* Top Cards */}
         <div className="mb-16 perspective-1000">
           <div className="flex flex-col md:flex-row justify-center items-center md:items-stretch gap-6">
-            {topTraders.map((trader, i) => (
+            {topTraders?.map((trader, i) => (
               <Card
                 key={i}
                 className={cn(
@@ -278,7 +329,7 @@ export default function Leaderboard() {
 
         {/* List View */}
         <div className="space-y-4">
-          {rankedTraders.map((trader, i) => (
+          {rankedTraders?.map((trader, i) => (
             <div
               key={i}
               className="bg-gradient-to-r from-[#1E2028] to-[#14151A] border border-[#2A2D3A]/50 rounded-lg p-4 flex items-center transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10 hover:border-purple-500/50"

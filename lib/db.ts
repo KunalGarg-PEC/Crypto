@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
-import { pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, timestamp, boolean } from 'drizzle-orm/pg-core'
 import { eq } from 'drizzle-orm'
 
 const connectionString = process.env.DATABASE_URL!
@@ -16,6 +16,7 @@ export const users = pgTable("users", {
   twitter: text("twitter"),
   twitch: text("twitch"),
   kick: text("kick"),
+  listed: boolean("listed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 })
 
@@ -104,6 +105,29 @@ export async function updateUser(
     return result[0];
   } catch (error) {
     console.error("Error updating user:", error);
+    throw error;
+  }
+}
+export async function toggleUserListing(walletAddress: string, listed: boolean) {
+  try {
+    const result = await db.update(users)
+      .set({ listed })
+      .where(eq(users.walletAddress, walletAddress))
+      .returning();
+
+    if (result.length === 0) throw new Error("User not found");
+    return result[0];
+  } catch (error) {
+    console.error("Error toggling user listing:", error);
+    throw error;
+  }
+}
+
+export async function getListedUsers() {
+  try {
+    return await db.select().from(users).where(eq(users.listed, true));
+  } catch (error) {
+    console.error("Error fetching listed users:", error);
     throw error;
   }
 }
