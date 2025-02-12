@@ -18,6 +18,7 @@ import {
   Wallet,
   ChevronDown,
   TrendingUp,
+  Loader2,
 } from "lucide-react";
 import { SocialLinks } from "@/components/social-links";
 import { Badge } from "@/components/badge";
@@ -41,6 +42,7 @@ export default function Leaderboard() {
   // Replace the static data import with
   const [topTraders, setTopTraders] = useState<topTraders[]>();
   const [rankedTraders, setRankedTraders] = useState<topTraders[]>();
+  const [isToggling, setIsToggling] = useState(false);
 
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -48,6 +50,7 @@ export default function Leaderboard() {
   const [phantomWalletInstalled, setPhantomWalletInstalled] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const [isListed, setIsListed] = useState(false);
+  const [isLoadingUserData, setIsLoadingUserData] = useState(true);
 
   useEffect(() => {
     getLeaderboardData()
@@ -63,24 +66,46 @@ export default function Leaderboard() {
   // Add this useEffect to sync with user data
   useEffect(() => {
     if (userData) {
-      setIsListed(userData.listed);
+      setIsListed(userData.listed ?? false);
+      setIsLoadingUserData(false);
+    } else {
+      setIsLoadingUserData(true);
     }
   }, [userData]);
 
   // Add this handler
   const handleToggleListing = async () => {
-    if (!walletAddress) return;
+    if (!walletAddress || isToggling) return;
 
-    const newState = !isListed;
-    setIsListed(newState);
+    const originalState = isListed;
+    const newState = !originalState;
 
-    const result = await toggleLeaderboardListing(walletAddress, newState);
-    if (!result.success) {
-      setIsListed(!newState); // Revert on error
-      alert("Failed to update listing status");
+    try {
+      setIsToggling(true); // Start loading
+      setIsListed(newState);
+
+      const result = await toggleLeaderboardListing(walletAddress, newState);
+      if (!result.success) throw new Error("Failed to toggle listing");
+
+      const validationResult = await getUserData(walletAddress);
+      if (
+        !validationResult.success ||
+        validationResult?.user?.listed !== newState
+      ) {
+        throw new Error("State mismatch after update");
+      }
+
+      const { topTraders: newTopTraders, rankedTraders: newRankedTraders } =
+        await getLeaderboardData();
+      setTopTraders(newTopTraders);
+      setRankedTraders(newRankedTraders);
+    } catch (error) {
+      console.error("Toggle failed:", error);
+      setIsListed(originalState);
+    } finally {
+      setIsToggling(false); // End loading
     }
   };
-
   useEffect(() => {
     const checkPhantomWallet = async () => {
       if (
@@ -105,14 +130,15 @@ export default function Leaderboard() {
 
     checkPhantomWallet();
   }, []); //Corrected useEffect dependency
-
   const fetchUserData = useCallback(async (address: string) => {
+    setIsLoadingUserData(true);
     const result = await getUserData(address);
     if (result.success) {
       setUserData(result.user);
     } else {
       console.error("Failed to fetch user data:", result.error);
     }
+    setIsLoadingUserData(false);
   }, []);
 
   const handleConnectWallet = useCallback(async () => {
@@ -213,14 +239,29 @@ export default function Leaderboard() {
                 <Wallet className="mr-2 h-5 w-5" />
                 {isWalletConnected && (
                   <div className="flex items-center space-x-2 ml-4">
-                    <Switch
-                      checked={isListed}
-                      onCheckedChange={handleToggleListing}
-                      className="data-[state=checked]:bg-green-900 data-[state=unchecked]:bg-gray-600"
-                    />
-                    <span className="text-sm">
-                      {isListed ? "Listed" : "Unlisted"}
-                    </span>
+                    {isLoadingUserData ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                    ) : (
+                      <>
+                        <Switch
+                          checked={isListed}
+                          onCheckedChange={handleToggleListing}
+                          className="data-[state=checked]:bg-green-900 data-[state=unchecked]:bg-gray-600"
+                          disabled={isToggling || isLoadingUserData}
+                        />
+                        <span className="text-sm flex items-center gap-2">
+                          {isToggling ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            </>
+                          ) : isListed ? (
+                            "Listed"
+                          ) : (
+                            "Unlisted"
+                          )}
+                        </span>
+                      </>
+                    )}
                   </div>
                 )}
               </span>
@@ -229,19 +270,16 @@ export default function Leaderboard() {
           </div>
         </div>
 
-        <Tabs defaultValue="daily" className="mb-12">
-          <TabsList className="bg-[#1E2028]/50 p-1 rounded-lg inline-flex">
-            {["Daily", "Weekly", "Monthly"].map((period) => (
-              <TabsTrigger
-                key={period}
-                value={period.toLowerCase()}
-                className="text-gray-300 hover:text-white hover:bg-white/10 transition-all duration-300 rounded-lg px-4 py-2"
-              >
-                {period}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="mb-12 flex space-x-2">
+          {["Daily", "Weekly", "Monthly"].map((period) => (
+            <Button
+              variant="ghost"
+              className="text-gray-300 hover:text-white !hover:bg-white/10 transition-all duration-300 rounded-lg px-4 py-2"
+            >
+              {period}
+            </Button>
+          ))}
+        </div>
 
         {/* Top Cards */}
         <div className="max-w-6xl mx-auto mt-8 mb-8 perspective-1000">
@@ -250,11 +288,11 @@ export default function Leaderboard() {
               <Card
                 key={i}
                 className={cn(
-                  "border-gray-800 relative overflow-visible",
-                  "transition-all duration-500 ease-out",
+                  "border-gray-800 relative overflow-visible transition-all duration-500 ease-out",
                   trader.position === "center"
-                    ? "z-20 w-[340px] transform scale-[1.03] -translate-y-1 translate-z-[30px] p-5 pb-12 pt-4 bg-[#0F1115] hover:opacity-100 hover:scale-[1.05] hover:translate-z-[40px]"
-                    : "z-10 w-[300px] transform scale-95 translate-y-0 translate-z-[-10px] opacity-90 hover:opacity-100 hover:scale-100 hover:translate-z-0 p-6 pt-7 bg-[#0F1115]"
+                    ? // Removed unsupported translate-z classes and added the custom "center-card" class
+                      "center-card z-20 w-[340px] p-5 pb-12 pt-4 bg-[#0F1115] hover:opacity-100"
+                    : "z-10 w-[300px] transform scale-95 translate-y-0 opacity-90 hover:opacity-100 hover:scale-100 p-6 pt-7 bg-[#0F1115]"
                 )}
               >
                 {trader.position === "left" && <Badge type="silver" />}
@@ -353,6 +391,15 @@ export default function Leaderboard() {
               </Card>
             ))}
           </div>
+          {/* Custom CSS for the center card 3D effect */}
+          <style jsx>{`
+            .center-card {
+              transform: scale(1.1) translateY(-0.25rem) translateZ(40px);
+            }
+            .center-card:hover {
+              transform: scale(1.15) translateY(-0.25rem) translateZ(50px);
+            }
+          `}</style>
         </div>
 
         {/* List View */}
@@ -430,11 +477,13 @@ export default function Leaderboard() {
         </div>
 
         <div className="mt-8 text-center">
-          <Button className="bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white rounded-lg px-6 py-3 font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 border border-purple-400/30 relative overflow-hidden group">
+          <Button
+            variant="ghost"
+            className="text-gray-300 hover:text-white hover:bg-white/10 transition-all duration-300 rounded-lg px-4 py-2"
+          >
             <span className="relative z-10 flex items-center">
               Load More <ChevronDown className="ml-2 h-5 w-5" />
             </span>
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </Button>
         </div>
 

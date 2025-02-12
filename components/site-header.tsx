@@ -18,10 +18,10 @@ export function SiteHeader() {
               <div className="flex items-center">
                 <div className="relative w-10 h-10 mr-3">
                   <Image
-                    src="/logo.png"
+                    src="/xxxxxx-removebg-preview.png"
                     alt="MightX Logo"
                     layout="fill"
-                    className="rounded-lg"
+                    className="rounded-lg size-5"
                   />
                   <div className="absolute inset-0 bg-blue-500 opacity-50 rounded-lg blur-sm"></div>
                 </div>
